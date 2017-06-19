@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import os
-import StringIO
+from io import StringIO
 import scipy.misc
 import numpy as np
 from glob import glob
@@ -103,9 +103,9 @@ class Trainer(object):
                                 global_step=self.step,
                                 ready_for_local_init_op=None)
 
-        gpu_options = tf.GPUOptions(allow_growth=True)
+        cpu_options = tf.CPUOptions(allow_growth=True)
         sess_config = tf.ConfigProto(allow_soft_placement=True,
-                                    gpu_options=gpu_options)
+                                    cpu_options=cpu_options)
 
         self.sess = sv.prepare_or_wait_for_session(config=sess_config)
 
@@ -313,6 +313,24 @@ class Trainer(object):
         for idx, img in enumerate(decodes):
             img = np.concatenate([[real1_batch[idx]], img, [real2_batch[idx]]], 0)
             save_image(img, os.path.join(root_path, 'test{}_interp_D_{}.png'.format(step, idx)), nrow=10 + 2)
+
+
+    def AEd_loss(self, inputs):
+        if inputs.shape[3] in [1, 3]:
+            inputs = inputs.transpose([0, 3, 1, 2])
+        x = self.sess.run(self.AE_x, {self.x: inputs})
+        return x        # autoencoded image based on 'inputs'
+                        # 1 or multiple images ? (format)
+    
+    def d_loss_out(self,img_real,img_gen):
+        AE_real = AEd_loss(img_real)
+        AE_gen = AEd_loss(img_gen)
+        d_loss = tf.reduce_mean(tf.abs(AE_real-img_real)) + tf.reduce_mean(tf.abs(AE_gen-img_gen))
+        return d_loss
+
+
+#TODO test on cpu until gpu is free => change all gpu parameters
+# (use-gpu = False   + other things to change ?)
 
     def test(self):
         root_path = "./"#self.model_dir
