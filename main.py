@@ -33,10 +33,13 @@ def main(config):
     if config.is_train:
         save_config(config)
         trainer.train()
+        return None
     else:
         if not config.load_path:
             raise Exception("[!] You should specify `load_path` to load a pretrained model")
         trainer.test()
+        d_loss = trainer.d_loss_out(config.img_real,config.img_gen)
+        return d_loss
 
 if __name__ == "__main__":
     config, unparsed = get_config()
