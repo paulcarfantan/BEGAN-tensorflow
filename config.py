@@ -58,6 +58,14 @@ misc_arg.add_argument('--sample_per_image', type=int, default=64,
                       help='# of sample per image during test sample generation')
 misc_arg.add_argument('--random_seed', type=int, default=123)
 
+#Image
+im_arg = add_argument_group('Images')
+im_arg.add_argument('--img_real')    # Type = ?
+im_arg.add_argument('--img_gen')
+
+
+
+
 def get_config():
     config, unparsed = parser.parse_known_args()
     if config.use_gpu:
