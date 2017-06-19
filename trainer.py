@@ -328,6 +328,7 @@ class Trainer(object):
         d_loss = tf.reduce_mean(tf.abs(AE_real-img_real)) + tf.reduce_mean(tf.abs(AE_gen-img_gen))
         return d_loss
 
+#TODO eval the d_loss : which session to use ?
 
 #TODO test on cpu until gpu is free => change all gpu parameters
 # (use-gpu = False   + other things to change ?)
