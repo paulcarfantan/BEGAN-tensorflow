@@ -21,16 +21,16 @@ def GeneratorCNN(z, hidden_num, output_num, repeat_num, data_format, reuse):
 
 def DiscriminatorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_format):
     with tf.variable_scope("D") as vs:
-        print('x',x.get_shape())
-        print('input_channel',input_channel)
-        #input_channel = 5
-        print('z_num',z_num)
-        print('repeat_num',repeat_num)
-        print('hidden_num',hidden_num)
-        print('data_format',data_format)
+        #print('x',x.get_shape())
+        #print('input_channel',input_channel)
+        #print('z_num',z_num)
+        #print('repeat_num',repeat_num)
+        #print('hidden_num',hidden_num)
+        #print('data_format',data_format)
+        
         # Encoder
         x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
-        print('encode 1 ',x.get_shape())
+        #print('encode 1 ',x.get_shape())
         prev_channel_num = hidden_num
         for idx in range(repeat_num):
             channel_num = hidden_num * (idx + 1)
@@ -38,33 +38,33 @@ def DiscriminatorCNN(x, input_channel, z_num, repeat_num, hidden_num, data_forma
             x = slim.conv2d(x, channel_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
             if idx < repeat_num - 1:
                 x = slim.conv2d(x, channel_num, 3, 2, activation_fn=tf.nn.elu, data_format=data_format)
-            print(idx+2,x.get_shape())
+            #print(idx+2,x.get_shape())
                 #x = tf.contrib.layers.max_pool2d(x, [2, 2], [2, 2], padding='VALID')
 
         x = tf.reshape(x, [-1, np.prod([8, 8, channel_num])])
-        print(repeat_num+2,x.get_shape())
+        #print(repeat_num+2,x.get_shape())
         z = x = slim.fully_connected(x, z_num, activation_fn=None)
-        print('z ',z.get_shape()) 
+        #print('z ',z.get_shape()) 
         
         # Decoder
         num_output = int(np.prod([8, 8, hidden_num]))
         x = slim.fully_connected(x, num_output, activation_fn=None)
-        print('decode 1',x.get_shape())
+        #print('decode 1',x.get_shape())
         x = reshape(x, 8, 8, hidden_num, data_format)
-        print('decode 2',x.get_shape())
+        #print('decode 2',x.get_shape())
 
         for idx in range(repeat_num):
             x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
             x = slim.conv2d(x, hidden_num, 3, 1, activation_fn=tf.nn.elu, data_format=data_format)
             if idx < repeat_num - 1:
                 x = upscale(x, 2, data_format)
-            print(idx+3,x.get_shape())
+            #print(idx+3,x.get_shape())
 
         out = slim.conv2d(x, input_channel, 3, 1, activation_fn=None, data_format=data_format)
-        print('out ',out.get_shape())
+        #print('out ',out.get_shape())
 
     variables = tf.contrib.framework.get_variables(vs)
-    print('variables',len(variables))
+    #print('variables',len(variables))
 
     return out, z, variables
 
