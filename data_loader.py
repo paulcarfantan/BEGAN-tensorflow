@@ -9,7 +9,7 @@ def get_loader(root, batch_size, scale_size, data_format, split=None, is_graysca
         root = os.path.join(root, 'splits', split)
 
     for ext in ["jpg", "png"]:
-        paths = glob("{}/*.{}".format(root, ext))
+        paths = glob("{}/**/*.{}".format(root, ext), recursive=True)
 
         if ext == "jpg":
             tf_decode = tf.image.decode_jpeg
@@ -52,5 +52,5 @@ def get_loader(root, batch_size, scale_size, data_format, split=None, is_graysca
         pass
     else:
         raise Exception("[!] Unkown data_format: {}".format(data_format))
-
+    print('self.data_loader ', tf.to_float(queue))
     return tf.to_float(queue)
