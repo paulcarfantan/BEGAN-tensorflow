@@ -60,8 +60,8 @@ misc_arg.add_argument('--random_seed', type=int, default=123)
 
 #Image
 im_arg = add_argument_group('Images')
-im_arg.add_argument('--img_real')    # Type = ?
-im_arg.add_argument('--img_gen')
+im_arg.add_argument('--img_real',type=str,help='directory containing only the real image')
+im_arg.add_argument('--img_gen',type=str,help='directory containing only the generated image')
 
 
 
