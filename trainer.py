@@ -177,19 +177,19 @@ class Trainer(object):
                 self.z, self.conv_hidden_num, self.channel,
                 self.repeat_num, self.data_format, reuse=False)
     
-        print('G',G)
-        print('x',x)
-        print('tf.concat([G,x],0)',tf.concat([G,x],0))
+        #print('G',G)
+        #print('x',x)
+        #print('tf.concat([G,x],0)',tf.concat([G,x],0))
         d_out, self.D_z, self.D_var = DiscriminatorCNN(
                 tf.concat([G, x], 0), self.channel, self.z_num, self.repeat_num,
                 self.conv_hidden_num, self.data_format)
-        print('d_out',d_out)
+        #print('d_out',d_out)
         AE_G, AE_x = tf.split(d_out, 2)
-        print('AE_x',AE_x)
-        print('AE_G',AE_G)
+        #print('AE_x',AE_x)
+        #print('AE_G',AE_G)
         self.G = denorm_img(G, self.data_format)
         self.AE_G, self.AE_x = denorm_img(AE_G, self.data_format), denorm_img(AE_x, self.data_format)
-        print('self.AE_x',self.AE_x)
+        #print('self.AE_x',self.AE_x)
         print()
         if self.optimizer == 'adam':
             optimizer = tf.train.AdamOptimizer
@@ -266,7 +266,7 @@ class Trainer(object):
                 continue
             if img.shape[3] in [1, 3]:
                 img = img.transpose([0, 3, 1, 2])
-            print(img.shape)    # (64,3,64,64)   3 = self.channel
+            #print(img.shape)    # (64,3,64,64)   3 = self.channel
             x_path = os.path.join(path, '{}_D_{}.png'.format(idx, key))
             x = self.sess.run(self.AE_x, {self.x: img})
             save_image(x, x_path)
@@ -337,7 +337,7 @@ class Trainer(object):
             img_gen_t = img_gen.transpose([0, 3, 1, 2])
         else:
             img_gen_t = img_gen
-        print('\n img_real.shape',img_real.shape)
+        #print('\n img_real.shape',img_real.shape)
         AE_real = self.sess.run(self.AE_x, {self.x : img_real_t})
         AE_gen = self.sess.run(self.AE_x, {self.x : img_gen_t})
         d_loss = tf.reduce_mean(tf.abs(AE_real-img_real)) + tf.reduce_mean(tf.abs(AE_gen-img_gen))
