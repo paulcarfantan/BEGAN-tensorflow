@@ -47,9 +47,11 @@ def slerp(val, low, high):
     return np.sin((1.0-val)*omega) / so * low + np.sin(val*omega) / so * high
 
 class Trainer(object):
-    def __init__(self, config, data_loader):
+    def __init__(self, config, data_loader, data_loader_real, data_loader_gen):
         self.config = config
         self.data_loader = data_loader
+        self.data_loader_real = data_loader_real
+        self.data_loader_gen = data_loader_gen
         self.dataset = config.dataset
 
         self.beta1 = config.beta1
@@ -103,9 +105,9 @@ class Trainer(object):
                                 global_step=self.step,
                                 ready_for_local_init_op=None)
 
-        cpu_options = tf.CPUOptions(allow_growth=True)
+        gpu_options = tf.GPUOptions(allow_growth=True)
         sess_config = tf.ConfigProto(allow_soft_placement=True,
-                                    cpu_options=cpu_options)
+                                    gpu_options=gpu_options)
 
         self.sess = sv.prepare_or_wait_for_session(config=sess_config)
 
@@ -119,7 +121,7 @@ class Trainer(object):
     def train(self):
         z_fixed = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
 
-        x_fixed = self.get_image_from_loader()
+        x_fixed = self.get_image_from_loader(data_loader)
         save_image(x_fixed, '{}/x_fixed.png'.format(self.model_dir))
 
         prev_measure = 1
@@ -174,15 +176,21 @@ class Trainer(object):
         G, self.G_var = GeneratorCNN(
                 self.z, self.conv_hidden_num, self.channel,
                 self.repeat_num, self.data_format, reuse=False)
-
+    
+        print('G',G)
+        print('x',x)
+        print('tf.concat([G,x],0)',tf.concat([G,x],0))
         d_out, self.D_z, self.D_var = DiscriminatorCNN(
                 tf.concat([G, x], 0), self.channel, self.z_num, self.repeat_num,
                 self.conv_hidden_num, self.data_format)
+        print('d_out',d_out)
         AE_G, AE_x = tf.split(d_out, 2)
-
+        print('AE_x',AE_x)
+        print('AE_G',AE_G)
         self.G = denorm_img(G, self.data_format)
         self.AE_G, self.AE_x = denorm_img(AE_G, self.data_format), denorm_img(AE_x, self.data_format)
-
+        print('self.AE_x',self.AE_x)
+        print()
         if self.optimizer == 'adam':
             optimizer = tf.train.AdamOptimizer
         else:
@@ -258,7 +266,7 @@ class Trainer(object):
                 continue
             if img.shape[3] in [1, 3]:
                 img = img.transpose([0, 3, 1, 2])
-
+            print(img.shape)    # (64,3,64,64)   3 = self.channel
             x_path = os.path.join(path, '{}_D_{}.png'.format(idx, key))
             x = self.sess.run(self.AE_x, {self.x: img})
             save_image(x, x_path)
@@ -315,31 +323,38 @@ class Trainer(object):
             save_image(img, os.path.join(root_path, 'test{}_interp_D_{}.png'.format(step, idx)), nrow=10 + 2)
 
 
-    def AEd_loss(self, inputs):
-        if inputs.shape[3] in [1, 3]:
-            inputs = inputs.transpose([0, 3, 1, 2])
-        x = self.sess.run(self.AE_x, {self.x: inputs})
-        return x        # autoencoded image based on 'inputs'
-                        # 1 or multiple images ? (format)
-    
-    def d_loss_out(self,img_real,img_gen):
-        AE_real = AEd_loss(img_real)
-        AE_gen = AEd_loss(img_gen)
+    def d_loss_out(self,img_real,img_gen):      # img = matrices
+        #self.y = self.data_loader_real.transpose([0,3,1,2])
+        #self.z = self.data_loader_gen.transpose([0,3,1,2])
+        img_real = self.get_image_from_loader(self.data_loader_real)
+        #print('img_real.shape',img_real.shape)
+        img_gen = self.get_image_from_loader(self.data_loader_gen)
+        if img_real.shape[3] in [1, 3]:
+            img_real_t = img_real.transpose([0, 3, 1, 2])
+        else:
+            img_real_t = img_real
+        if img_gen.shape[3] in [1, 3]:
+            img_gen_t = img_gen.transpose([0, 3, 1, 2])
+        else:
+            img_gen_t = img_gen
+        print('\n img_real.shape',img_real.shape)
+        AE_real = self.sess.run(self.AE_x, {self.x : img_real_t})
+        AE_gen = self.sess.run(self.AE_x, {self.x : img_gen_t})
         d_loss = tf.reduce_mean(tf.abs(AE_real-img_real)) + tf.reduce_mean(tf.abs(AE_gen-img_gen))
-        return d_loss
+        
+        return d_loss.eval(session=self.sess)
 
-#TODO eval the d_loss : which session to use ?
-
-#TODO test on cpu until gpu is free => change all gpu parameters
-# (use-gpu = False   + other things to change ?)
+#TODO : change feed_dict (self.x =? different shape ?)
+        # still AE_x ?
+#TODO : data_path_real / gen in main.py : have to be directories and not single files.
 
     def test(self):
         root_path = "./"#self.model_dir
 
         all_G_z = None
         for step in range(3):
-            real1_batch = self.get_image_from_loader()
-            real2_batch = self.get_image_from_loader()
+            real1_batch = self.get_image_from_loader(self.data_loader)
+            real2_batch = self.get_image_from_loader(self.data_loader)
 
             save_image(real1_batch, os.path.join(root_path, 'test{}_real1.png'.format(step)))
             save_image(real2_batch, os.path.join(root_path, 'test{}_real2.png'.format(step)))
@@ -363,8 +378,13 @@ class Trainer(object):
 
         save_image(all_G_z, '{}/all_G_z.png'.format(root_path), nrow=16)
 
-    def get_image_from_loader(self):
-        x = self.data_loader.eval(session=self.sess)
+    def get_image_from_loader(self,data):
+        if data==self.data_loader:
+            x = self.data_loader.eval(session=self.sess)
+        if data==self.data_loader_real:
+            x = self.data_loader_real.eval(session=self.sess)
+        if data==self.data_loader_gen:
+            x = self.data_loader_gen.eval(session=self.sess)
         if self.data_format == 'NCHW':
             x = x.transpose([0, 2, 3, 1])
         return x
